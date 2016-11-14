@@ -33,7 +33,9 @@ import org.jvnet.localizer.Localizable;
 import org.kohsuke.stapler.export.ExportedBean;
 import org.kohsuke.stapler.export.Exported;
 
+import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
+import java.io.ObjectStreamException;
 import java.util.Date;
 
 /**
@@ -128,21 +130,42 @@ public abstract class OfflineCause {
 
     /**
      * Taken offline by user.
+     *
      * @since 1.551
      */
     public static class UserCause extends SimpleOfflineCause {
-        private final User user;
+        @Deprecated
+        private transient User user;
+        private /*final*/ String userId;
 
-        public UserCause(User user, String message) {
-            super(hudson.slaves.Messages._SlaveComputer_DisconnectedBy(
-                    user!=null ? user.getId() : Jenkins.ANONYMOUS.getName(),
+        public UserCause(@CheckForNull User user, @CheckForNull String message) {
+            this(
+                    user != null ? user.getId() : Jenkins.ANONYMOUS.getName(),
                     message != null ? " : " + message : ""
-            ));
-            this.user = user;
+            );
+        }
+
+        private UserCause(String userId, String message) {
+            super(hudson.slaves.Messages._SlaveComputer_DisconnectedBy(userId, message));
+            this.userId = userId;
         }
 
         public User getUser() {
-            return user;
+            return userId == null
+                    ? User.getUnknown()
+                    : User.getById(userId, false)
+            ;
+        }
+
+        private Object readResolve() throws ObjectStreamException {
+            if (user != null) {
+                userId = user.getId() != null
+                    ? user.getId()
+                    : User.get(user.getFullName()).getId()
+                ;
+                user = null;
+            }
+            return this;
         }
     }
 

@@ -136,7 +136,7 @@ public abstract class OfflineCause {
     public static class UserCause extends SimpleOfflineCause {
         @Deprecated
         private transient User user;
-        private /*final*/ String userId;
+        private /*final*/ @Nonnull String userId;
 
         public UserCause(@CheckForNull User user, @CheckForNull String message) {
             this(
@@ -157,13 +157,22 @@ public abstract class OfflineCause {
             ;
         }
 
+        // Storing the User in a filed was a mistake, switch to userId
         private Object readResolve() throws ObjectStreamException {
             if (user != null) {
-                userId = user.getId() != null
-                    ? user.getId()
-                    : User.get(user.getFullName()).getId()
-                ;
-                user = null;
+                String id = user.getId();
+                if (id != null) {
+                    userId = id;
+                } else {
+                    // The user field is not properly deserialized so id may be missing. Look the user up by fullname
+                    User user = User.get(this.user.getFullName(), false);
+                    if (user != null) {
+                        userId = user.getId();
+                    } else {
+                        userId = Jenkins.ANONYMOUS.getName();
+                    }
+                }
+                this.user = null;
             }
             return this;
         }

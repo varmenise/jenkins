@@ -44,7 +44,7 @@ import java.util.Map;
 public class DangerousPermissionsWithoutAdministerMonitor extends AdministrativeMonitor {
     @Override
     public boolean isActivated() {
-        return !getUsersWithDangerousPermissionsButNotAdminister().isEmpty();
+        return !getUsersWithDangerousPermissionsButNotAdminister().isEmpty() || !getDangerousPermissionsForAnonymousWithoutAdminister().isEmpty();
     }
     // TODO check authenticated to not duplicate for each user -- is this even possible?
 
@@ -67,8 +67,11 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
     }
 
     public List<Permission> getDangerousPermissionsForAnonymousWithoutAdminister() {
-        List<Permission> grantedPermissions = getGrantedDangerousPermissions();
-        if (!grantedPermissions.isEmpty() && !Jenkins.getInstance().getACL().hasPermission(Jenkins.ANONYMOUS, Jenkins.ADMINISTER)) {
+        if (!Jenkins.getInstance().getACL().hasPermission(Jenkins.ANONYMOUS, Jenkins.ADMINISTER)) {
+            return Collections.emptyList();
+        }
+        List<Permission> grantedPermissions = getGrantedDangerousPermissions(Jenkins.ANONYMOUS);
+        if (!grantedPermissions.isEmpty()) {
             return grantedPermissions;
         }
         return Collections.emptyList();

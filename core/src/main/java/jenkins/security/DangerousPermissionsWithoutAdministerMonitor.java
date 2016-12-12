@@ -27,6 +27,7 @@ import hudson.Extension;
 import hudson.PluginManager;
 import hudson.model.AdministrativeMonitor;
 import hudson.model.User;
+import hudson.security.HudsonPrivateSecurityRealm;
 import hudson.security.Permission;
 import jenkins.model.Jenkins;
 import org.acegisecurity.Authentication;
@@ -86,6 +87,11 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
             }
         }
         return grantedPermissions;
+    }
+
+    public boolean isAbleToEnumerateAllUsers() {
+        Jenkins j = Jenkins.getInstance();
+        return j.getSecurityRealm() instanceof HudsonPrivateSecurityRealm;
     }
 
     @Override

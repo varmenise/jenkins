@@ -46,6 +46,13 @@ div(class: "warning") {
             }
         }
     }
+
+    if (!my.ableToEnumerateAllUsers) {
+        p {
+            text(_("The above list may be incomplete, as Jenkins may not be able to enumerate all users that can log in."))
+        }
+    }
+
     if (!my.dangerousPermissionsForAnonymousWithoutAdminister.empty) {
         p {
             text(_("The following dangerous permissions are granted to anonymous users, without them being administrators:"))

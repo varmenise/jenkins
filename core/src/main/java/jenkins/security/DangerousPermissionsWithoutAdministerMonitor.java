@@ -27,11 +27,10 @@ import hudson.Extension;
 import hudson.PluginManager;
 import hudson.model.AdministrativeMonitor;
 import hudson.model.User;
-import hudson.security.ACL;
 import hudson.security.Permission;
 import jenkins.model.Jenkins;
-import org.acegisecurity.context.SecurityContext;
-import org.acegisecurity.context.SecurityContextHolder;
+import org.acegisecurity.Authentication;
+import org.acegisecurity.userdetails.UsernameNotFoundException;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import java.util.ArrayList;
@@ -53,37 +52,33 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
         Jenkins j = Jenkins.getInstance();
         final Map<User, List<Permission>> affectedUsersAndPermissions = new HashMap<>();
         for (User user : User.getAll()) {
-            SecurityContext context = ACL.impersonate(user.impersonate());
             try {
-                List<Permission> grantedPermissions = getGrantedDangerousPermissions();
-                if (!grantedPermissions.isEmpty() && !j.hasPermission(Jenkins.ADMINISTER)) {
-                    affectedUsersAndPermissions.put(user, grantedPermissions);
+                Authentication auth = user.impersonate();
+                if (j.getACL().hasPermission(auth, Jenkins.ADMINISTER)) {
+                    // We only care about non-admins
+                    continue;
                 }
-            } finally {
-                SecurityContextHolder.setContext(context);
+                affectedUsersAndPermissions.put(user, getGrantedDangerousPermissions(auth));
+            } catch (UsernameNotFoundException ex) {
+                // not a real user, so just move on
             }
         }
         return affectedUsersAndPermissions;
     }
 
     public List<Permission> getDangerousPermissionsForAnonymousWithoutAdminister() {
-        SecurityContext context = ACL.impersonate(Jenkins.ANONYMOUS);
-        try {
-            List<Permission> grantedPermissions = getGrantedDangerousPermissions();
-            if (!grantedPermissions.isEmpty() && !Jenkins.getInstance().hasPermission(Jenkins.ADMINISTER)) {
-                return grantedPermissions;
-            }
-        } finally {
-            SecurityContextHolder.setContext(context);
+        List<Permission> grantedPermissions = getGrantedDangerousPermissions();
+        if (!grantedPermissions.isEmpty() && !Jenkins.getInstance().getACL().hasPermission(Jenkins.ANONYMOUS, Jenkins.ADMINISTER)) {
+            return grantedPermissions;
         }
         return Collections.emptyList();
     }
 
-    private List<Permission> getGrantedDangerousPermissions() {
+    private List<Permission> getGrantedDangerousPermissions(Authentication authentication) {
         Jenkins j = Jenkins.getInstance();
         List<Permission> grantedPermissions = new ArrayList<>();
         for (Permission permission : new Permission[]{ Jenkins.RUN_SCRIPTS, PluginManager.UPLOAD_PLUGINS, PluginManager.CONFIGURE_UPDATECENTER }) {
-            if (j.hasPermission(permission)) {
+            if (j.getACL().hasPermission(authentication, permission)) {
                 grantedPermissions.add(permission);
             }
         }

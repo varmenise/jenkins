@@ -27,20 +27,15 @@ package jenkins.security.DangerousPermissionsWithoutAdministerMonitor;
 def f = namespace(lib.FormTagLib)
 
 div(class: "warning") {
-    p {
-        text(_("The users below have at least one dangerous permission, but are not administrators:"))
-    }
+    p(_("The users below have at least one dangerous permission, but are not administrators:"))
+
     ul {
         my.usersWithDangerousPermissionsButNotAdminister.each { user, permissions ->
             li {
-                a(href: rootURL + '/user/' + user.id) {
-                    text(user.displayName)
-                }
+                a(user.displayName, href: rootURL + '/' + user.url)
                 ul {
                     permissions.each { permission ->
-                        li {
-                            text(permission.name)
-                        }
+                        li(_(permission.name))
                     }
                 }
             }
@@ -48,9 +43,7 @@ div(class: "warning") {
     }
 
     if (!my.ableToEnumerateAllUsers) {
-        p {
-            text(_("The above list may be incomplete, as Jenkins may not be able to enumerate all users that can log in."))
-        }
+        p(_("The above list may be incomplete, as Jenkins may not be able to enumerate all users that can log in."))
     }
 
     if (!my.dangerousPermissionsForAnonymousWithoutAdminister.empty) {
@@ -58,20 +51,13 @@ div(class: "warning") {
             text(_("The following dangerous permissions are granted to anonymous users, without them being administrators:"))
             ul {
                 my.dangerousPermissionsForAnonymousWithoutAdminister.each { permission ->
-                    li {
-                        text(permission.name)
-                    }
+                    li(_(permission.name))
                 }
             }
         }
     }
 }
+p(raw(_("explanation", rootURL + '/configureSecurity')))
 p {
-    // TODO why does text() escape HTML from the localized text?
-    raw(_("explanation", rootURL + '/configureSecurity'))
-}
-p {
-    a (href: "https://jenkins.io/redirect/dangerous-permissions", target: '_blank') {
-        text(_("Learn more…"))
-    }
+    a (_("Learn more…"), href: "https://jenkins.io/redirect/dangerous-permissions", target: '_blank')
 }

@@ -27,23 +27,24 @@ package jenkins.security.DangerousPermissionsWithoutAdministerMonitor;
 def f = namespace(lib.FormTagLib)
 
 div(class: "warning") {
-    p(_("The users below have at least one dangerous permission, but are not administrators:"))
+    if (!my.usersWithDangerousPermissionsButNotAdminister.empty) {
+        p(_("The users below have at least one dangerous permission, but are not administrators:"))
 
-    ul {
-        my.usersWithDangerousPermissionsButNotAdminister.each { user, permissions ->
-            li {
-                a(user.displayName, href: rootURL + '/' + user.url)
-                ul {
-                    permissions.each { permission ->
-                        li(_(permission.name))
+        ul {
+            my.usersWithDangerousPermissionsButNotAdminister.each { user, permissions ->
+                li {
+                    a(user.displayName, href: rootURL + '/' + user.url)
+                    ul {
+                        permissions.each { permission ->
+                            li(_(permission.name))
+                        }
                     }
                 }
             }
         }
-    }
-
-    if (!my.ableToEnumerateAllUsers) {
-        p(_("The above list may be incomplete, as Jenkins may not be able to enumerate all users that can log in."))
+        if (!my.ableToEnumerateAllUsers) {
+            p(_("The above list may be incomplete, as Jenkins may not be able to enumerate all users that can log in."))
+        }
     }
 
     if (!my.dangerousPermissionsForAnonymousWithoutAdminister.empty) {

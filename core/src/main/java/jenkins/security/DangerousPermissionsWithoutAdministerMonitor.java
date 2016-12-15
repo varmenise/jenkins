@@ -68,7 +68,8 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
     }
 
     public List<Permission> getDangerousPermissionsForAnonymousWithoutAdminister() {
-        if (!Jenkins.getInstance().getACL().hasPermission(Jenkins.ANONYMOUS, Jenkins.ADMINISTER)) {
+        if (Jenkins.getInstance().getACL().hasPermission(Jenkins.ANONYMOUS, Jenkins.ADMINISTER)) {
+            // if anon can administer, other permissions don't matter
             return Collections.emptyList();
         }
         List<Permission> grantedPermissions = getGrantedDangerousPermissions(Jenkins.ANONYMOUS);

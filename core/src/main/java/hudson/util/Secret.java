@@ -2,6 +2,7 @@
  * The MIT License
  * 
  * Copyright (c) 2004-2010, Sun Microsystems, Inc., Kohsuke Kawaguchi
+ * Copyright (c) 2016, CloudBees Inc.
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +64,7 @@ public final class Secret implements Serializable {
      */
     private final String value;
 
-    private Secret(String value) {
+    /*package*/ Secret(String value) {
         this.value = value;
     }
 
@@ -101,32 +102,20 @@ public final class Secret implements Serializable {
     }
 
     /**
-     * Turns {@link Jenkins#getSecretKey()} into an AES key.
-     *
-     * @deprecated
-     * This is no longer the key we use to encrypt new information, but we still need this
-     * to be able to decrypt what's already persisted.
-     */
-    @Deprecated
-    /*package*/ static SecretKey getLegacyKey() throws GeneralSecurityException {
-        String secret = SECRET;
-        if(secret==null)    return Jenkins.getInstance().getSecretKeyAsAES128();
-        return Util.toAes128Key(secret);
-    }
-
-    /**
      * Encrypts {@link #value} and returns it in an encoded printable form.
      *
      * @see #toString() 
      */
     public String getEncryptedValue() {
         try {
-            Cipher cipher = KEY.encrypt();
-            // add the magic suffix which works like a check sum.
-            return new String(Base64.encode(cipher.doFinal((value+MAGIC).getBytes("UTF-8"))));
-        } catch (GeneralSecurityException e) {
-            throw new Error(e); // impossible
-        } catch (UnsupportedEncodingException e) {
+            byte[] iv = KEY.newIv();
+            Cipher cipher = KEY.encrypt(iv);
+            StringBuilder str = new StringBuilder();
+            str.append(Base64.encode(cipher.doFinal(this.value.getBytes("UTF-8"))));
+            str.append(':');
+            str.append(Base64.encode(iv));
+            return str.toString();
+        } catch (GeneralSecurityException | UnsupportedEncodingException e) {
             throw new Error(e); // impossible
         }
     }
@@ -137,40 +126,41 @@ public final class Secret implements Serializable {
      * You must then call {@link #decrypt} to eliminate false positives.
      */
     @Restricted(NoExternalUse.class)
-    public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("[A-Za-z0-9+/]+={0,2}");
+    public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("[A-Za-z0-9+/]+={0,2}(:[A-Za-z0-9+/]+={0,2})?");
 
     /**
      * Reverse operation of {@link #getEncryptedValue()}. Returns null
      * if the given cipher text was invalid.
      */
     public static Secret decrypt(String data) {
-        if(data==null)      return null;
+        if (data == null) return null;
+        int separator = data.indexOf(':');
+        if (separator > 0 && separator < data.length() && ENCRYPTED_VALUE_PATTERN.matcher(data.substring(separator + 1)).matches()) { //likely CBC encrypted but could be plain text
+            try {
+                byte[] iv = Base64.decode(data.substring(separator + 1).toCharArray());
+                byte[] code = Base64.decode(data.substring(0, separator).toCharArray());
+                String text = new String(KEY.decrypt(iv).doFinal(code), "UTF-8");
+                return new Secret(text);
+            } catch (GeneralSecurityException e) {
+                try {
+                    return HistoricalSecrets.decrypt(data, KEY);
+                } catch (IOException | GeneralSecurityException e1) {
+                    return null;
+                }
+            } catch (UnsupportedEncodingException e) {
+                throw new Error(e); // impossible
+            } catch (IOException e) {
+                return null;
+            }
+        }
         try {
-            byte[] in = Base64.decode(data.toCharArray());
-            Secret s = tryDecrypt(KEY.decrypt(), in);
-            if (s!=null)    return s;
-
-            // try our historical key for backward compatibility
-            Cipher cipher = getCipher("AES");
-            cipher.init(Cipher.DECRYPT_MODE, getLegacyKey());
-            return tryDecrypt(cipher, in);
+            return HistoricalSecrets.decrypt(data, KEY);
         } catch (GeneralSecurityException e) {
             return null;
         } catch (UnsupportedEncodingException e) {
             throw new Error(e); // impossible
         } catch (IOException e) {
             return null;
-        }
-    }
-
-    /*package*/ static Secret tryDecrypt(Cipher cipher, byte[] in) throws UnsupportedEncodingException {
-        try {
-            String plainText = new String(cipher.doFinal(in), "UTF-8");
-            if(plainText.endsWith(MAGIC))
-                return new Secret(plainText.substring(0,plainText.length()-MAGIC.length()));
-            return null;
-        } catch (GeneralSecurityException e) {
-            return null; // if the key doesn't match with the bytes, it can result in BadPaddingException
         }
     }
 
@@ -227,8 +217,6 @@ public final class Secret implements Serializable {
             return fromString(reader.getValue());
         }
     }
-
-    private static final String MAGIC = "::::MAGIC::::";
 
     /**
      * Workaround for JENKINS-6459 / http://java.net/jira/browse/GLASSFISH-11862

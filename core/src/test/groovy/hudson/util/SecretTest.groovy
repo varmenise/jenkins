@@ -54,6 +54,9 @@ public class SecretTest {
 
         // can we round trip?
         assert secret==Secret.fromString(secret.encryptedValue);
+
+        //Two consecutive encryption requests should not result in the same encrypted value - SECURITY-304
+        assert secret.encryptedValue != secret.encryptedValue
     }
 
     @Test
@@ -77,7 +80,7 @@ public class SecretTest {
         def s = Secret.fromString("Mr.Jenkins");
         def xml = Jenkins.XSTREAM.toXML(s);
         assert !xml.contains(s.plainText)
-        assert xml.contains(s.encryptedValue)
+        assert xml ==~ /<hudson\.util\.Secret>[A-Za-z0-9+\/]+={0,2}:[A-Za-z0-9+\/]+={0,2}<\/hudson\.util\.Secret>/
 
         def o = Jenkins.XSTREAM.fromXML(xml);
         assert o==s : xml;
@@ -104,11 +107,11 @@ public class SecretTest {
      */
     @Test
     void migrationFromLegacyKeyToConfidentialStore() {
-        def legacy = Secret.legacyKey
+        def legacy = HistoricalSecrets.legacyKey
         ["Hello world","","\u0000unprintable"].each { str ->
             def cipher = Secret.getCipher("AES");
             cipher.init(Cipher.ENCRYPT_MODE, legacy);
-            def old = new String(Base64.encode(cipher.doFinal((str + Secret.MAGIC).getBytes("UTF-8"))))
+            def old = new String(Base64.encode(cipher.doFinal((str + HistoricalSecrets.MAGIC).getBytes("UTF-8"))))
             def s = Secret.fromString(old)
             assert s.plainText==str : "secret by the old key should decrypt"
             assert s.encryptedValue!=old : "but when encrypting, ConfidentialKey should be in use"

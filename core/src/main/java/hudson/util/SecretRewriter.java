@@ -46,7 +46,7 @@ public class SecretRewriter {
 
     public SecretRewriter(File backupDirectory) throws GeneralSecurityException {
         cipher = Secret.getCipher("AES");
-        key = Secret.getLegacyKey();
+        key = HistoricalSecrets.getLegacyKey();
         this.backupDirectory = backupDirectory;
     }
 
@@ -63,7 +63,7 @@ public class SecretRewriter {
             return s;   // not a valid base64
         }
         cipher.init(Cipher.DECRYPT_MODE, key);
-        Secret sec = Secret.tryDecrypt(cipher, in);
+        Secret sec = HistoricalSecrets.tryDecrypt(cipher, in);
         if(sec!=null) // matched
             return sec.getEncryptedValue(); // replace by the new encrypted value
         else // not encrypted with the legacy key. leave it unmodified

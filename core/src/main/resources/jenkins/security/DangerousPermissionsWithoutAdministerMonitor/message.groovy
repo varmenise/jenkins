@@ -27,7 +27,7 @@ package jenkins.security.DangerousPermissionsWithoutAdministerMonitor;
 def f = namespace(lib.FormTagLib)
 
 div(class: "warning") {
-    if (!my.usersWithDangerousPermissionsButNotAdminister.empty) {
+    if (!my.usersWithDangerousPermissionsButNotAdminister.isEmpty()) {
         p(_("The users below have at least one dangerous permission, but are not administrators:"))
 
         ul {
@@ -47,7 +47,7 @@ div(class: "warning") {
         }
     }
 
-    if (!my.dangerousPermissionsForAnonymousWithoutAdminister.empty) {
+    if (!my.dangerousPermissionsForAnonymousWithoutAdminister.isEmpty()) {
         p {
             text(_("The following dangerous permissions are granted to anonymous users, without them being administrators:"))
             ul {
@@ -61,4 +61,9 @@ div(class: "warning") {
 p(raw(_("explanation", rootURL + '/configureSecurity')))
 p {
     a (_("Learn more…"), href: "https://jenkins.io/redirect/dangerous-permissions", target: '_blank')
+}
+form(method: "post", action: "${rootURL}/${it.url}/disable") {
+    div {
+        f.submit(value: _("Do not show this warning again"))
+    }
 }

@@ -33,6 +33,8 @@ import com.trilead.ssh2.crypto.Base64;
 import jenkins.model.Jenkins;
 import hudson.Util;
 import jenkins.security.CryptoConfidentialKey;
+import net.sf.json.JSONException;
+import net.sf.json.JSONObject;
 import org.kohsuke.stapler.Stapler;
 
 import javax.crypto.SecretKey;
@@ -63,9 +65,15 @@ public final class Secret implements Serializable {
      * Unencrypted secret text.
      */
     private final String value;
+    private byte[] iv;
 
     /*package*/ Secret(String value) {
         this.value = value;
+    }
+
+    /*package*/ Secret(String value, byte[] iv) {
+        this.value = value;
+        this.iv = iv;
     }
 
     /**
@@ -108,12 +116,16 @@ public final class Secret implements Serializable {
      */
     public String getEncryptedValue() {
         try {
-            byte[] iv = KEY.newIv();
+            if (iv == null) { //if we were created from plain text or other reason without iv
+                iv = KEY.newIv();
+            }
+            JSONObject data = new JSONObject();
+            data.put("iv", new String(Base64.encode(iv)));
             Cipher cipher = KEY.encrypt(iv);
-            StringBuilder str = new StringBuilder();
-            str.append(Base64.encode(cipher.doFinal(this.value.getBytes("UTF-8"))));
-            str.append(':');
-            str.append(Base64.encode(iv));
+            data.put("secret", new String(Base64.encode(cipher.doFinal(this.value.getBytes("UTF-8")))));
+            StringBuilder str = new StringBuilder("{");
+            str.append(Base64.encode(data.toString().getBytes("UTF-8")));
+            str.append("}");
             return str.toString();
         } catch (GeneralSecurityException | UnsupportedEncodingException e) {
             throw new Error(e); // impossible
@@ -121,12 +133,20 @@ public final class Secret implements Serializable {
     }
 
     /**
-     * Pattern matching a possible output of {@link #getEncryptedValue}.
+     * Pattern matching a possible output of {@link #getEncryptedValue} possibly containing.
      * Basically, any Base64-encoded value.
      * You must then call {@link #decrypt} to eliminate false positives.
      */
     @Restricted(NoExternalUse.class)
-    public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("[A-Za-z0-9+/]+={0,2}(:[A-Za-z0-9+/]+={0,2})?");
+    public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?[A-Za-z0-9+/]+={0,2}\\}?");
+
+    /**
+     * Pattern matching a possible output of {@link #getEncryptedValue} containing metadata.
+     * Basically, any Base64-encoded value surrounded by <code>{</code> and <code>}</code>.
+     * You must then call {@link #decrypt} to eliminate false positives.
+     */
+    @Restricted(NoExternalUse.class)
+    public static final Pattern ENCRYPTED_META_VALUE_PATTERN = Pattern.compile("\\{[A-Za-z0-9+/]+={0,2}\\}?");
 
     /**
      * Reverse operation of {@link #getEncryptedValue()}. Returns null
@@ -134,14 +154,16 @@ public final class Secret implements Serializable {
      */
     public static Secret decrypt(String data) {
         if (data == null) return null;
-        int separator = data.indexOf(':');
-        if (separator > 0 && separator < data.length() && ENCRYPTED_VALUE_PATTERN.matcher(data.substring(separator + 1)).matches()) { //likely CBC encrypted but could be plain text
+
+        if (ENCRYPTED_META_VALUE_PATTERN.matcher(data).matches()) { //likely CBC encrypted but could be plain text
             try {
-                byte[] iv = Base64.decode(data.substring(separator + 1).toCharArray());
-                byte[] code = Base64.decode(data.substring(0, separator).toCharArray());
+                String stripped = data.substring(1, data.length() - 1);
+                JSONObject json = JSONObject.fromObject(new String(Base64.decode(stripped.toCharArray()), "UTF-8"));
+                byte[] iv = Base64.decode(json.getString("iv").toCharArray());
+                byte[] code = Base64.decode(json.getString("secret").toCharArray());
                 String text = new String(KEY.decrypt(iv).doFinal(code), "UTF-8");
-                return new Secret(text);
-            } catch (GeneralSecurityException e) {
+                return new Secret(text, iv);
+            } catch (GeneralSecurityException | JSONException e) {
                 try {
                     return HistoricalSecrets.decrypt(data, KEY);
                 } catch (IOException | GeneralSecurityException e1) {

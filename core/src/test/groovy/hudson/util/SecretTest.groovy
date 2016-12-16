@@ -55,8 +55,10 @@ public class SecretTest {
         // can we round trip?
         assert secret==Secret.fromString(secret.encryptedValue);
 
-        //Two consecutive encryption requests should not result in the same encrypted value - SECURITY-304
-        assert secret.encryptedValue != secret.encryptedValue
+        //Two consecutive encryption requests of the same object should result in the same encrypted value - SECURITY-304
+        assert secret.encryptedValue == secret.encryptedValue
+        //Two consecutive encryption requests of different objects with the same value should not result in the same encrypted value - SECURITY-304
+        assert secret.encryptedValue != Secret.fromString(secret.plainText).encryptedValue
     }
 
     @Test
@@ -80,7 +82,7 @@ public class SecretTest {
         def s = Secret.fromString("Mr.Jenkins");
         def xml = Jenkins.XSTREAM.toXML(s);
         assert !xml.contains(s.plainText)
-        assert xml ==~ /<hudson\.util\.Secret>[A-Za-z0-9+\/]+={0,2}:[A-Za-z0-9+\/]+={0,2}<\/hudson\.util\.Secret>/
+        assert xml ==~ /<hudson\.util\.Secret>\{[A-Za-z0-9+\/]+={0,2}}<\/hudson\.util\.Secret>/
 
         def o = Jenkins.XSTREAM.fromXML(xml);
         assert o==s : xml;

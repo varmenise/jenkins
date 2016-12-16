@@ -116,8 +116,10 @@ public final class Secret implements Serializable {
      */
     public String getEncryptedValue() {
         try {
-            if (iv == null) { //if we were created from plain text or other reason without iv
-                iv = KEY.newIv();
+            synchronized (this) {
+                if (iv == null) { //if we were created from plain text or other reason without iv
+                    iv = KEY.newIv();
+                }
             }
             JSONObject data = new JSONObject();
             data.put("iv", new String(Base64.encode(iv)));
@@ -133,7 +135,7 @@ public final class Secret implements Serializable {
     }
 
     /**
-     * Pattern matching a possible output of {@link #getEncryptedValue} possibly containing.
+     * Pattern matching a possible output of {@link #getEncryptedValue} possibly containing metadata.
      * Basically, any Base64-encoded value.
      * You must then call {@link #decrypt} to eliminate false positives.
      */
@@ -155,7 +157,7 @@ public final class Secret implements Serializable {
     public static Secret decrypt(String data) {
         if (data == null) return null;
 
-        if (ENCRYPTED_META_VALUE_PATTERN.matcher(data).matches()) { //likely CBC encrypted but could be plain text
+        if (ENCRYPTED_META_VALUE_PATTERN.matcher(data).matches()) { //likely CBC encrypted/containing metadata but could be plain text
             try {
                 String stripped = data.substring(1, data.length() - 1);
                 JSONObject json = JSONObject.fromObject(new String(Base64.decode(stripped.toCharArray()), "UTF-8"));

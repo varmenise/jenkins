@@ -25,15 +25,23 @@
 package hudson.util;
 
 import hudson.model.FreeStyleProject;
+import hudson.model.ParameterDefinition;
 import hudson.model.ParametersDefinitionProperty;
 import hudson.model.PasswordParameterDefinition;
+import org.hamcrest.core.Is;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.recipes.LocalData;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import java.io.IOException;
+import java.util.regex.Pattern;
+
+import static org.hamcrest.core.Is.isA;
+import static org.hamcrest.core.IsNot.not;
+import static org.hamcrest.core.StringContains.containsString;
+import static org.junit.Assert.*;
 
 /**
  * Tests {@link Secret}.
@@ -67,5 +75,34 @@ public class SecretTest {
         project = j.configRoundtrip(project);
         String round4 = project.getConfigFile().asString();
         assertEquals(round3, round4);
+    }
+
+    @Test
+    @Issue("SECURITY-304")
+    @LocalData
+    public void canReadPreSec304Secrets() throws Exception {
+        FreeStyleProject project = j.jenkins.getItemByFullName("OldSecret", FreeStyleProject.class);
+        String oldxml = project.getConfigFile().asString();
+        //It should be unchanged on disk
+        assertThat(oldxml, containsString("<defaultValue>z/Dd3qrHdQ6/C5lR7uEafM/jD3nQDrGprw3XsfZ/0vo=</defaultValue>"));
+        ParametersDefinitionProperty property = project.getProperty(ParametersDefinitionProperty.class);
+        ParameterDefinition definition = property.getParameterDefinitions().get(0);
+        assertTrue(definition instanceof PasswordParameterDefinition);
+        Secret secret = ((PasswordParameterDefinition) definition).getDefaultValueAsSecret();
+        assertEquals("theSecret", secret.getPlainText());
+
+        //OK it was read correctly from disk, now the first roundtrip should update the encrypted value
+
+        project = j.configRoundtrip(project);
+        String newXml = project.getConfigFile().asString();
+        assertNotEquals(oldxml, newXml); //This could have changed because Jenkins has moved on, so not really a good check
+        assertThat(newXml, not(containsString("<defaultValue>z/Dd3qrHdQ6/C5lR7uEafM/jD3nQDrGprw3XsfZ/0vo=</defaultValue>")));
+        Pattern p = Pattern.compile("<defaultValue>\\{[A-Za-z0-9+/]+={0,2}}</defaultValue>");
+        assertTrue(p.matcher(newXml).find());
+
+        //But the next roundtrip should result in the same data
+        project = j.configRoundtrip(project);
+        String round2 = project.getConfigFile().asString();
+        assertEquals(newXml, round2);
     }
 }

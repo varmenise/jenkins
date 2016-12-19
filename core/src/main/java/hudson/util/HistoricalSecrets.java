@@ -34,8 +34,9 @@ import org.kohsuke.accmod.restrictions.NoExternalUse;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Historical algorithms for decrypting {@link Secret}s.
@@ -54,9 +55,9 @@ public class HistoricalSecrets {
         return tryDecrypt(cipher, in);
     }
 
-    /*package*/ static Secret tryDecrypt(Cipher cipher, byte[] in) throws UnsupportedEncodingException {
+    /*package*/ static Secret tryDecrypt(Cipher cipher, byte[] in) {
         try {
-            String plainText = new String(cipher.doFinal(in), "UTF-8");
+            String plainText = new String(cipher.doFinal(in), UTF_8);
             if(plainText.endsWith(MAGIC))
                 return new Secret(plainText.substring(0,plainText.length()-MAGIC.length()));
             return null;

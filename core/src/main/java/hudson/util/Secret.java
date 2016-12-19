@@ -37,7 +37,6 @@ import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.Stapler;
 
-import javax.crypto.SecretKey;
 import javax.crypto.Cipher;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
@@ -46,6 +45,8 @@ import java.security.GeneralSecurityException;
 import java.util.regex.Pattern;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Glorified {@link String} that uses encryption in the persisted form, to avoid accidental exposure of a secret.
@@ -124,12 +125,12 @@ public final class Secret implements Serializable {
             JSONObject data = new JSONObject();
             data.put("iv", new String(Base64.encode(iv)));
             Cipher cipher = KEY.encrypt(iv);
-            data.put("secret", new String(Base64.encode(cipher.doFinal(this.value.getBytes("UTF-8")))));
+            data.put("secret", new String(Base64.encode(cipher.doFinal(this.value.getBytes(UTF_8)))));
             StringBuilder str = new StringBuilder("{");
-            str.append(Base64.encode(data.toString().getBytes("UTF-8")));
+            str.append(Base64.encode(data.toString().getBytes(UTF_8)));
             str.append("}");
             return str.toString();
-        } catch (GeneralSecurityException | UnsupportedEncodingException e) {
+        } catch (GeneralSecurityException e) {
             throw new Error(e); // impossible
         }
     }
@@ -160,10 +161,10 @@ public final class Secret implements Serializable {
         if (ENCRYPTED_META_VALUE_PATTERN.matcher(data).matches()) { //likely CBC encrypted/containing metadata but could be plain text
             try {
                 String stripped = data.substring(1, data.length() - 1);
-                JSONObject json = JSONObject.fromObject(new String(Base64.decode(stripped.toCharArray()), "UTF-8"));
+                JSONObject json = JSONObject.fromObject(new String(Base64.decode(stripped.toCharArray()), UTF_8));
                 byte[] iv = Base64.decode(json.getString("iv").toCharArray());
                 byte[] code = Base64.decode(json.getString("secret").toCharArray());
-                String text = new String(KEY.decrypt(iv).doFinal(code), "UTF-8");
+                String text = new String(KEY.decrypt(iv).doFinal(code), UTF_8);
                 return new Secret(text, iv);
             } catch (GeneralSecurityException | JSONException e) {
                 try {
@@ -171,8 +172,6 @@ public final class Secret implements Serializable {
                 } catch (IOException | GeneralSecurityException e1) {
                     return null;
                 }
-            } catch (UnsupportedEncodingException e) {
-                throw new Error(e); // impossible
             } catch (IOException e) {
                 return null;
             }

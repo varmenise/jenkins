@@ -26,14 +26,47 @@ package jenkins.security.DangerousPermissionsWithoutAdministerMonitor;
 
 def f = namespace(lib.FormTagLib)
 
+boolean shouldShowCollapsedList(def my) {
+    return my.usersWithDangerousPermissionsButNotAdminister.size() > 5 && !my.dangerousPermissionsGrantedToAllUsers.isEmpty();
+}
+
 div(class: "warning") {
     if (!my.usersWithDangerousPermissionsButNotAdminister.isEmpty()) {
-        p(_("The users below have at least one dangerous permission, but are not administrators:"))
 
+        if (shouldShowCollapsedList(my)) {
+            // once there's 6+ listed users, collapse entries
+            if (my.ableToEnumerateAllUsers) {
+                p(_("allUsers"))
+            } else {
+                p(_("allKnownUsers"))
+            }
+            ul {
+                my.dangerousPermissionsGrantedToAllUsers.each { permission ->
+                    li(_(permission.name))
+                }
+            }
+
+            if (my.anyUsersWithDangerousPermissionsNotGrantedToAllUsers) {
+                p(_("plusSomeUsers"))
+            }
+        }
+
+        if (!shouldShowCollapsedList(my)) {
+            p(_("someUsers"))
+        }
         ul {
             my.usersWithDangerousPermissionsButNotAdminister.each { user, permissions ->
+                if (shouldShowCollapsedList(my)) {
+                    extraPermissions = new ArrayList<>(permissions)
+                    extraPermissions.removeAll(my.dangerousPermissionsGrantedToAllUsers)
+                    if (extraPermissions.isEmpty()) {
+                        return
+                    }
+                    permissions = extraPermissions
+                }
+
                 li {
-                    a(user.displayName, href: rootURL + '/' + user.url)
+                    a(user.displayName, href: rootURL + '/' + user.ugrl)
                     ul {
                         permissions.each { permission ->
                             li(_(permission.name))
@@ -43,7 +76,7 @@ div(class: "warning") {
             }
         }
         if (!my.ableToEnumerateAllUsers) {
-            p(_("The above list may be incomplete, as Jenkins may not be able to enumerate all users that can log in."))
+            p(_("cannotEnumerate"))
         }
     }
 

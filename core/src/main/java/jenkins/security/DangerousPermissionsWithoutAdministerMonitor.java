@@ -62,12 +62,12 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
 
     private transient Map<User, List<Permission>> affectedUsersAndPermissions;
     private transient List<Permission> dangerousPermissionsForAnonymousWithoutAdminister;
+    private transient List<Permission> dangerousPermissionsGrantedToAllUsers;
 
     @Override
     public synchronized boolean isActivated() {
         return !getUsersWithDangerousPermissionsButNotAdminister().isEmpty() || !getDangerousPermissionsForAnonymousWithoutAdminister().isEmpty();
     }
-    // TODO check authenticated to not duplicate for each user -- is this even possible?
 
     /**
      * A map of users and the dangerous permissions they're granted. Only contains entries for users who have at least
@@ -93,6 +93,38 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
         return this.dangerousPermissionsForAnonymousWithoutAdminister;
     }
 
+    public synchronized List<Permission> getDangerousPermissionsGrantedToAllUsers() {
+        if (this.dangerousPermissionsGrantedToAllUsers == null) {
+            return Collections.emptyList();
+        }
+        return this.dangerousPermissionsGrantedToAllUsers;
+    }
+
+    public synchronized boolean isAnyUsersWithDangerousPermissionsNotGrantedToAllUsers() {
+        if (getUsersWithDangerousPermissionsButNotAdminister().isEmpty()) {
+            // no users recorded
+            return false;
+        }
+        // users with dangerous permissions recorded
+
+        List<Permission> dangerousPermissionsGrantedToAllUsers = getDangerousPermissionsGrantedToAllUsers();
+
+        if (dangerousPermissionsGrantedToAllUsers.isEmpty()) {
+            // no permissions granted to all
+            return true;
+        }
+
+        for (Map.Entry<User, List<Permission>> entry : getUsersWithDangerousPermissionsButNotAdminister().entrySet()) {
+            for (Permission permission : entry.getValue()) {
+                if (!dangerousPermissionsGrantedToAllUsers.contains(permission)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Returns true if Jenkins is known to be able to enumerate all users in the security realm.
      * Can return false even if all users are known to Jenkins due to limitations of the security realm API.
@@ -104,9 +136,11 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
         return j != null && j.getSecurityRealm() instanceof HudsonPrivateSecurityRealm;
     }
 
-    private synchronized void setData(Map<User, List<Permission>> affectedUsersAndPermissions, List<Permission> dangerousPermissionsForAnonymousWithoutAdminister) {
+    private synchronized void setData(Map<User, List<Permission>> affectedUsersAndPermissions, List<Permission> dangerousPermissionsForAnonymousWithoutAdminister,
+                                      List<Permission> dangerousPermissionsGrantedToAllUsers) {
         this.affectedUsersAndPermissions = affectedUsersAndPermissions;
         this.dangerousPermissionsForAnonymousWithoutAdminister = dangerousPermissionsForAnonymousWithoutAdminister;
+        this.dangerousPermissionsGrantedToAllUsers = dangerousPermissionsGrantedToAllUsers;
     }
 
     @Override
@@ -166,6 +200,7 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
             }
 
             final Map<User, List<Permission>> affectedUsersAndPermissions = new HashMap<>();
+            List<Permission> permissionsGrantedToAllUsers = null;
             for (User user : User.getAll()) {
                 try {
                     Authentication auth = user.impersonate();
@@ -178,12 +213,21 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
                     List<Permission> permissions = getGrantedDangerousPermissions(auth);
                     if (permissions.isEmpty()) {
                         // harmless permissions only
+                        permissionsGrantedToAllUsers = Collections.emptyList();
                         listener.getLogger().println(String.format("User %s has no dangerous permissions", user.getId()));
                         continue;
                     }
 
                     listener.getLogger().println(String.format("User %s has DANGEROUS permissions but not Administer", user.getId()));
                     affectedUsersAndPermissions.put(user, permissions);
+
+                    if (permissionsGrantedToAllUsers == null) {
+                        // first non-admin user: initialize
+                        permissionsGrantedToAllUsers = new ArrayList<>(permissions);
+                        continue;
+                    }
+
+                    permissionsGrantedToAllUsers.retainAll(permissions);
 
                 } catch (UsernameNotFoundException ex) {
                     listener.getLogger().println(String.format("User %s wasn't found in the security realm", user.getId()));
@@ -206,7 +250,7 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
             }
 
 
-            monitor.setData(affectedUsersAndPermissions, dangerousPermissionsForAnonymousWithoutAdminister);
+            monitor.setData(affectedUsersAndPermissions, dangerousPermissionsForAnonymousWithoutAdminister, permissionsGrantedToAllUsers);
         }
 
         @Override

@@ -66,7 +66,7 @@ div(class: "warning") {
                 }
 
                 li {
-                    a(user.displayName, href: rootURL + '/' + user.ugrl)
+                    a(user.displayName, href: rootURL + '/' + user.url)
                     ul {
                         permissions.each { permission ->
                             li(_(permission.name))

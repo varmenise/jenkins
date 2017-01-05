@@ -69,7 +69,14 @@ public class SecretTest {
             //println "${plaintext} → ${ciphertext}"
             assert Secret.ENCRYPTED_VALUE_PATTERN.matcher(ciphertext).matches();
         }
+        //Not "plain" text
         assert !Secret.ENCRYPTED_VALUE_PATTERN.matcher("hello world").matches();
+        //Not "plain" text
+        assert !Secret.ENCRYPTED_VALUE_PATTERN.matcher("helloworld!").matches();
+        //legacy key
+        assert Secret.ENCRYPTED_VALUE_PATTERN.matcher("abcdefghijklmnopqr0123456789").matches();
+        //legacy key
+        assert Secret.ENCRYPTED_VALUE_PATTERN.matcher("abcdefghijklmnopqr012345678==").matches();
     }
 
     @Test
@@ -82,7 +89,7 @@ public class SecretTest {
         def s = Secret.fromString("Mr.Jenkins");
         def xml = Jenkins.XSTREAM.toXML(s);
         assert !xml.contains(s.plainText)
-        assert xml ==~ /<hudson\.util\.Secret>\{[A-Za-z0-9+\/]+={0,2}}<\/hudson\.util\.Secret>/
+        assert xml ==~ /<hudson\.util\.Secret>\{.*&quot;secret&quot;:&quot;[A-Za-z0-9+\/]+={0,2}&quot;}<\/hudson\.util\.Secret>/
 
         def o = Jenkins.XSTREAM.fromXML(xml);
         assert o==s : xml;

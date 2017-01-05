@@ -23,16 +23,21 @@ class SecretRewriterTest {
 
     @Rule public TemporaryFolder tmp = new TemporaryFolder()
 
+    def FOO_PATTERN = /<foo>\{"iv":"[A-Za-z0-9+\/]+={0,2}","secret":"[A-Za-z0-9+\/]+={0,2}"}<\/foo>/
+    def MSG_PATTERN = /<msg>\{"iv":"[A-Za-z0-9+\/]+={0,2}","secret":"[A-Za-z0-9+\/]+={0,2}"}<\/msg>/
+    def FOO_PATTERN2 = /(<foo>\{"iv":"[A-Za-z0-9+\/]+={0,2}","secret":"[A-Za-z0-9+\/]+={0,2}"}<\/foo>){2}/
+    def ABC_FOO_PATTERN = /<abc>\s<foo>\{"iv":"[A-Za-z0-9+\/]+={0,2}","secret":"[A-Za-z0-9+\/]+={0,2}"}<\/foo>\s<\/abc>/
+
     @Test
     void singleFileRewrite() {
         def o = encryptOld('foobar') // old
         def n = encryptNew('foobar') // new
         roundtrip "<foo>${o}</foo>",
-                {assert it ==~ /<foo>\{[A-Za-z0-9+\/]+={0,2}}<\/foo>/}
+                {assert it ==~ FOO_PATTERN}
 
 
         roundtrip "<foo>${o}</foo><foo>${o}</foo>",
-                {assert it ==~ /(<foo>\{[A-Za-z0-9+\/]+={0,2}}<\/foo>){2}/}
+                {assert it ==~ FOO_PATTERN2}
 
         roundtrip "<foo>${n}</foo>",
                 {assert it == "<foo>${n}</foo>"}
@@ -45,7 +50,7 @@ class SecretRewriterTest {
         roundtrip "$o</foo>", {assert it == "$o</foo>"}
 
         //
-        roundtrip "<abc>\n<foo>$o</foo>\n</abc>", {assert it ==~ /<abc>\s<foo>\{[A-Za-z0-9+\/]+={0,2}}<\/foo>\s<\/abc>/}
+        roundtrip "<abc>\n<foo>$o</foo>\n</abc>", {assert it ==~ ABC_FOO_PATTERN}
     }
 
     void roundtrip(String before, Closure check) {
@@ -102,12 +107,12 @@ class SecretRewriterTest {
         assert 6==sw.rewriteRecursive(t, st)
 
         dirs.each { p->
-            assert new File(t,"$p/foo.xml").text.trim() ==~ /<msg>\{[A-Za-z0-9+\/]+={0,2}}<\/msg>/
+            assert new File(t,"$p/foo.xml").text.trim() ==~ MSG_PATTERN
             assert new File(backup,"$p/foo.xml").text.trim()==payload
         }
 
         // t2 is only reachable by following a symlink. this should be covered, too
-        assert new File(t2,"foo.xml").text.trim() ==~ /<msg>\{[A-Za-z0-9+\/]+={0,2}}<\/msg>/
+        assert new File(t2,"foo.xml").text.trim() ==~ MSG_PATTERN
     }
 
 }

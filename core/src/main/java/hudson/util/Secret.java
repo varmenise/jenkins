@@ -126,10 +126,7 @@ public final class Secret implements Serializable {
             data.put("iv", new String(Base64.encode(iv)));
             Cipher cipher = KEY.encrypt(iv);
             data.put("secret", new String(Base64.encode(cipher.doFinal(this.value.getBytes(UTF_8)))));
-            StringBuilder str = new StringBuilder("{");
-            str.append(Base64.encode(data.toString().getBytes(UTF_8)));
-            str.append("}");
-            return str.toString();
+            return data.toString();
         } catch (GeneralSecurityException e) {
             throw new Error(e); // impossible
         }
@@ -138,18 +135,10 @@ public final class Secret implements Serializable {
     /**
      * Pattern matching a possible output of {@link #getEncryptedValue} possibly containing metadata.
      * Basically, any Base64-encoded value.
-     * You must then call {@link #decrypt} to eliminate false positives.
+     * You must then call {@link #decrypt(String)} to eliminate false positives.
      */
     @Restricted(NoExternalUse.class)
-    public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?[A-Za-z0-9+/]+={0,2}\\}?");
-
-    /**
-     * Pattern matching a possible output of {@link #getEncryptedValue} containing metadata.
-     * Basically, any Base64-encoded value surrounded by <code>{</code> and <code>}</code>.
-     * You must then call {@link #decrypt} to eliminate false positives.
-     */
-    @Restricted(NoExternalUse.class)
-    public static final Pattern ENCRYPTED_META_VALUE_PATTERN = Pattern.compile("\\{[A-Za-z0-9+/]+={0,2}\\}?");
+    public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?(\"iv\":\"[A-Za-z0-9+/]+={0,2}\"\\s*,\\s*)?(\"?secret\"?:\")?[A-Za-z0-9+/]+={0,2}\"?}?");
 
     /**
      * Reverse operation of {@link #getEncryptedValue()}. Returns null
@@ -158,10 +147,9 @@ public final class Secret implements Serializable {
     public static Secret decrypt(String data) {
         if (data == null) return null;
 
-        if (ENCRYPTED_META_VALUE_PATTERN.matcher(data).matches()) { //likely CBC encrypted/containing metadata but could be plain text
+        if (data.startsWith("{") && data.endsWith("}")) { //likely CBC encrypted/containing metadata but could be plain text
             try {
-                String stripped = data.substring(1, data.length() - 1);
-                JSONObject json = JSONObject.fromObject(new String(Base64.decode(stripped.toCharArray()), UTF_8));
+                JSONObject json = JSONObject.fromObject(data);
                 byte[] iv = Base64.decode(json.getString("iv").toCharArray());
                 byte[] code = Base64.decode(json.getString("secret").toCharArray());
                 String text = new String(KEY.decrypt(iv).doFinal(code), UTF_8);

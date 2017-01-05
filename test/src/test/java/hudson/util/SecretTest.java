@@ -97,7 +97,7 @@ public class SecretTest {
         String newXml = project.getConfigFile().asString();
         assertNotEquals(oldxml, newXml); //This could have changed because Jenkins has moved on, so not really a good check
         assertThat(newXml, not(containsString("<defaultValue>z/Dd3qrHdQ6/C5lR7uEafM/jD3nQDrGprw3XsfZ/0vo=</defaultValue>")));
-        Pattern p = Pattern.compile("<defaultValue>\\{[A-Za-z0-9+/]+={0,2}}</defaultValue>");
+        Pattern p = Pattern.compile("<defaultValue>\\{&quot;iv&quot;:&quot;[A-Za-z0-9+/]+={0,2}&quot;,&quot;secret&quot;:&quot;[A-Za-z0-9+/]+={0,2}&quot;}</defaultValue>");
         assertTrue(p.matcher(newXml).find());
 
         //But the next roundtrip should result in the same data

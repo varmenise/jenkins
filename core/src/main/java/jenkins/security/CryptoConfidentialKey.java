@@ -41,7 +41,7 @@ public class CryptoConfidentialKey extends ConfidentialKey {
                             store(payload);
                         }
                         // Due to the stupid US export restriction JDK only ships 128bit version.
-                        secret = new SecretKeySpec(payload,0,128/8, WEAK_ALGORITHM);
+                        secret = new SecretKeySpec(payload,0,128/8, KEY_ALGORITHM);
                     }
                 }
             }
@@ -58,7 +58,7 @@ public class CryptoConfidentialKey extends ConfidentialKey {
     @Deprecated
     public Cipher encrypt() {
         try {
-            Cipher cipher = Secret.getCipher(WEAK_ALGORITHM);
+            Cipher cipher = Secret.getCipher(KEY_ALGORITHM);
             cipher.init(Cipher.ENCRYPT_MODE, getKey());
             return cipher;
         } catch (GeneralSecurityException e) {
@@ -127,7 +127,7 @@ public class CryptoConfidentialKey extends ConfidentialKey {
     @Deprecated
     public Cipher decrypt() {
         try {
-            Cipher cipher = Secret.getCipher(WEAK_ALGORITHM);
+            Cipher cipher = Secret.getCipher(KEY_ALGORITHM);
             cipher.init(Cipher.DECRYPT_MODE, getKey());
             return cipher;
         } catch (GeneralSecurityException e) {
@@ -136,6 +136,6 @@ public class CryptoConfidentialKey extends ConfidentialKey {
     }
 
 
-    private static final String WEAK_ALGORITHM = "AES";
+    private static final String KEY_ALGORITHM = "AES";
     private static final String ALGORITHM = "AES/CBC/PKCS5Padding";
 }

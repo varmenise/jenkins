@@ -24,7 +24,6 @@
 
 package hudson.slaves;
 
-import jenkins.model.Jenkins;
 import hudson.Functions;
 import hudson.model.Computer;
 import hudson.model.User;
@@ -36,6 +35,7 @@ import org.kohsuke.stapler.export.Exported;
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import java.io.ObjectStreamException;
+import java.util.Collections;
 import java.util.Date;
 
 /**
@@ -136,11 +136,12 @@ public abstract class OfflineCause {
     public static class UserCause extends SimpleOfflineCause {
         @Deprecated
         private transient User user;
-        private /*final*/ @Nonnull String userId;
+        // null when unknown
+        private /*final*/ @CheckForNull String userId;
 
         public UserCause(@CheckForNull User user, @CheckForNull String message) {
             this(
-                    user != null ? user.getId() : Jenkins.ANONYMOUS.getName(),
+                    user != null ? user.getId() : null,
                     message != null ? " : " + message : ""
             );
         }
@@ -153,11 +154,12 @@ public abstract class OfflineCause {
         public User getUser() {
             return userId == null
                     ? User.getUnknown()
-                    : User.getById(userId, false)
+                    : User.getById(userId, true)
             ;
         }
 
         // Storing the User in a filed was a mistake, switch to userId
+        @SuppressWarnings("deprecation")
         private Object readResolve() throws ObjectStreamException {
             if (user != null) {
                 String id = user.getId();
@@ -165,12 +167,8 @@ public abstract class OfflineCause {
                     userId = id;
                 } else {
                     // The user field is not properly deserialized so id may be missing. Look the user up by fullname
-                    User user = User.get(this.user.getFullName(), false);
-                    if (user != null) {
-                        userId = user.getId();
-                    } else {
-                        userId = Jenkins.ANONYMOUS.getName();
-                    }
+                    User user = User.get(this.user.getFullName(), true, Collections.emptyMap());
+                    userId = user == null ? null : user.getId();
                 }
                 this.user = null;
             }

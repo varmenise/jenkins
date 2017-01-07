@@ -114,9 +114,11 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
             return true;
         }
 
-        for (Map.Entry<User, List<Permission>> entry : getUsersWithDangerousPermissionsButNotAdminister().values()) {
-            if (!dangerousPermissionsGrantedToAllUsers.contains(permission)) {
-                return true;
+        for (List<Permission> permissions : getUsersWithDangerousPermissionsButNotAdminister().values()) {
+            for (Permission permission : permissions) {
+                if (!dangerousPermissionsGrantedToAllUsers.contains(permission)) {
+                    return true;
+                }
             }
         }
 

@@ -82,7 +82,7 @@ div(class: "warning") {
 
     if (!my.dangerousPermissionsForAnonymousWithoutAdminister.isEmpty()) {
         p {
-            text(_("The following dangerous permissions are granted to anonymous users, without them being administrators:"))
+            text(_("anonymous"))
             ul {
                 my.dangerousPermissionsForAnonymousWithoutAdminister.each { permission ->
                     li(_(permission.name))
@@ -93,10 +93,10 @@ div(class: "warning") {
 }
 p(raw(_("explanation", rootURL + '/configureSecurity')))
 p {
-    a (_("Learn more…"), href: "https://jenkins.io/redirect/dangerous-permissions", target: '_blank')
+    a (_("more"), href: "https://jenkins.io/redirect/dangerous-permissions", target: '_blank')
 }
 form(method: "post", action: "${rootURL}/${it.url}/disable") {
     div {
-        f.submit(value: _("Do not show this warning again"))
+        f.submit(value: _("disable"))
     }
 }

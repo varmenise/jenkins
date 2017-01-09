@@ -32,6 +32,8 @@ public class RekeySecretAdminMonitorTest extends HudsonTestCase {
     @Inject
     RekeySecretAdminMonitor monitor;
 
+    final String plain_regex_match = ".*\\{\"iv\":\"[A-Za-z0-9+/]+={0,2}\"\\s*,\\s*\"secret\":\"[A-Za-z0-9+/]+={0,2}\"}.*";
+
     @Override
     protected void setUp() throws Exception {
         SecretHelper.set(TEST_KEY);
@@ -80,7 +82,7 @@ public class RekeySecretAdminMonitorTest extends HudsonTestCase {
 
     private void verifyRewrite(File dir) throws Exception {
         File xml = new File(dir, "foo.xml");
-        Pattern pattern = Pattern.compile("<foo>\\{[A-Za-z0-9+/]+={0,2}}</foo>");
+        Pattern pattern = Pattern.compile("<foo>"+plain_regex_match+"</foo>");
         assertTrue(pattern.matcher(FileUtils.readFileToString(xml).trim()).matches());
     }
 

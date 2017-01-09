@@ -604,7 +604,7 @@ public abstract class AbstractItem extends Actionable implements Item, HttpDelet
         rsp.sendError(SC_BAD_REQUEST);
     }
 
-    static final Pattern SECRET_PATTERN = Pattern.compile(">(" + Secret.ENCRYPTED_VALUE_PATTERN + ")<");
+    static final Pattern SECRET_PATTERN = Pattern.compile(">(" + Secret.XML_ENCODED_ENCRYPTED_VALUE_PATTERN + ")<");
     /**
      * Writes {@code config.xml} to the specified output stream.
      * The user must have at least {@link #EXTENDED_READ}.

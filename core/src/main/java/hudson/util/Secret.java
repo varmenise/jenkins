@@ -30,14 +30,17 @@ import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.trilead.ssh2.crypto.Base64;
+import hudson.Functions;
 import jenkins.model.Jenkins;
 import hudson.Util;
 import jenkins.security.CryptoConfidentialKey;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.kohsuke.stapler.Stapler;
 
 import javax.crypto.Cipher;
+import java.beans.XMLDecoder;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.io.IOException;
@@ -139,6 +142,14 @@ public final class Secret implements Serializable {
      */
     @Restricted(NoExternalUse.class)
     public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?(\"iv\":\"[A-Za-z0-9+/]+={0,2}\"\\s*,\\s*)?(\"?secret\"?:\")?[A-Za-z0-9+/]+={0,2}\"?}?");
+    /**
+     * Pattern matching a possible output of {@link #getEncryptedValue} possibly containing metadata as it could appear in an xml or html output.
+     * Basically, any Base64-encoded value.
+     * You must then call {@link #decrypt(String)} to eliminate false positives.
+     * @see #ENCRYPTED_VALUE_PATTERN
+     */
+    @Restricted(NoExternalUse.class)
+    public static final Pattern XML_ENCODED_ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?(&quot;iv&quot;:&quot;[A-Za-z0-9+/]+={0,2}&quot;\\s*,\\s*)?(&quot;?secret&quot;?:&quot;)?[A-Za-z0-9+/]+={0,2}(&quot;)?}?");
 
     /**
      * Reverse operation of {@link #getEncryptedValue()}. Returns null
@@ -149,7 +160,11 @@ public final class Secret implements Serializable {
 
         if (data.startsWith("{") && data.endsWith("}")) { //likely CBC encrypted/containing metadata but could be plain text
             try {
-                JSONObject json = JSONObject.fromObject(data);
+                String decData = data;
+                if (data.contains("&quot;iv&quot;")) { //XML Encoded JSON
+                    decData = StringEscapeUtils.unescapeXml(data);
+                }
+                JSONObject json = JSONObject.fromObject(decData);
                 byte[] iv = Base64.decode(json.getString("iv").toCharArray());
                 byte[] code = Base64.decode(json.getString("secret").toCharArray());
                 String text = new String(KEY.decrypt(iv).doFinal(code), UTF_8);

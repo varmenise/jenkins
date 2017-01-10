@@ -47,6 +47,7 @@ import jenkins.model.Jenkins;
 import jenkins.security.NotReallyRoleSensitiveCallable;
 import jenkins.util.xml.XMLUtils;
 
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.tools.ant.taskdefs.Copy;
 import org.apache.tools.ant.types.FileSet;
 import org.kohsuke.stapler.WebMethod;
@@ -622,7 +623,11 @@ public abstract class AbstractItem extends Actionable implements Item, HttpDelet
             Matcher matcher = SECRET_PATTERN.matcher(xml);
             StringBuffer cleanXml = new StringBuffer();
             while (matcher.find()) {
-                if (Secret.decrypt(matcher.group(1)) != null) {
+                String potentialSecret = matcher.group(1);
+                if (potentialSecret != null && potentialSecret.startsWith("{") && potentialSecret.contains("&quot;")) {
+                    potentialSecret = StringEscapeUtils.unescapeXml(potentialSecret);
+                }
+                if (Secret.decrypt(potentialSecret) != null) {
                     matcher.appendReplacement(cleanXml, ">********<");
                 }
             }

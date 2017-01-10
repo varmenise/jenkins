@@ -30,18 +30,15 @@ import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.trilead.ssh2.crypto.Base64;
-import hudson.Functions;
 import jenkins.model.Jenkins;
 import hudson.Util;
 import jenkins.security.CryptoConfidentialKey;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringEscapeUtils;
-import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.stapler.Stapler;
 
 import javax.crypto.Cipher;
-import java.beans.XMLDecoder;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.io.IOException;
@@ -162,7 +159,7 @@ public final class Secret implements Serializable {
         if (data.startsWith("{") && data.endsWith("}")) { //likely CBC encrypted/containing metadata but could be plain text
             try {
                 String decData = data;
-                if (data.contains("&quot;iv&quot;")) { //XML Encoded JSON
+                if (data.contains("&quot;")) { //XML Encoded JSON
                     decData = StringEscapeUtils.unescapeXml(data);
                 }
                 JSONObject json = JSONObject.fromObject(decData);

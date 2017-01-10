@@ -29,6 +29,8 @@ import hudson.model.ParameterDefinition;
 import hudson.model.ParametersDefinitionProperty;
 import hudson.model.PasswordParameterDefinition;
 import org.hamcrest.core.Is;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.Issue;
@@ -46,10 +48,21 @@ import static org.junit.Assert.*;
 /**
  * Tests {@link Secret}.
  */
-public class SecretTest {
+public class SecretCompatTest {
 
     @Rule
-    public JenkinsRule j = new JenkinsRule();
+    public JenkinsRule j = new JenkinsRule() {
+        @Override
+        public void before() throws Throwable {
+            Secret.resetKeyForTest();  //As early as possible
+            super.before();
+        }
+    };
+
+    @After
+    public void after() {
+        Secret.resetKeyForTest();
+    }
 
 
     @Test

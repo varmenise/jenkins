@@ -1,7 +1,10 @@
 package jenkins.security;
 
+import hudson.Main;
 import hudson.util.Secret;
+import jenkins.model.Jenkins;
 import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
 import javax.crypto.Cipher;
@@ -138,4 +141,16 @@ public class CryptoConfidentialKey extends ConfidentialKey {
 
     private static final String KEY_ALGORITHM = "AES";
     private static final String ALGORITHM = "AES/CBC/PKCS5Padding";
+
+    /**
+     * Reset the internal secret key for testing.
+     */
+    @Restricted(NoExternalUse.class)
+    public void resetForTest() {
+        if (Main.isUnitTest) {
+            this.secret = null;
+        } else {
+            throw new IllegalStateException("Only for testing");
+        }
+    }
 }

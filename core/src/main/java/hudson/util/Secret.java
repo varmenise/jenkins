@@ -37,6 +37,7 @@ import jenkins.security.CryptoConfidentialKey;
 import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringEscapeUtils;
+import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.stapler.Stapler;
 
 import javax.crypto.Cipher;
@@ -259,6 +260,14 @@ public final class Secret implements Serializable {
      * The key that encrypts the data on disk.
      */
     private static final CryptoConfidentialKey KEY = new CryptoConfidentialKey(Secret.class.getName());
+
+    /**
+     * Reset the internal secret key for testing.
+     */
+    @Restricted(NoExternalUse.class)
+    /*package*/ static void resetKeyForTest() {
+        KEY.resetForTest();
+    }
 
     private static final long serialVersionUID = 1L;
 

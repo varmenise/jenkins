@@ -31,7 +31,8 @@ import org.junit.Rule
 import org.junit.Test
 
 import java.util.Random;
-import javax.crypto.Cipher;
+import javax.crypto.Cipher
+import java.util.regex.Pattern;
 
 /**
  * @author Kohsuke Kawaguchi
@@ -42,6 +43,8 @@ public class SecretTest {
 
     @Rule
     public MockSecretRule mockSecretRule = new MockSecretRule()
+
+    static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?(\"iv\":\"[A-Za-z0-9+/]+={0,2}\"\\s*,\\s*)?(\"?secret\"?:\")?[A-Za-z0-9+/]+={0,2}\"?}?");
 
     @Test
     void testEncrypt() {
@@ -67,16 +70,16 @@ public class SecretTest {
             String plaintext = RandomStringUtils.random(new Random().nextInt(i));
             String ciphertext = Secret.fromString(plaintext).getEncryptedValue();
             //println "${plaintext} → ${ciphertext}"
-            assert Secret.ENCRYPTED_VALUE_PATTERN.matcher(ciphertext).matches();
+            assert ENCRYPTED_VALUE_PATTERN.matcher(ciphertext).matches();
         }
         //Not "plain" text
-        assert !Secret.ENCRYPTED_VALUE_PATTERN.matcher("hello world").matches();
+        assert !ENCRYPTED_VALUE_PATTERN.matcher("hello world").matches();
         //Not "plain" text
-        assert !Secret.ENCRYPTED_VALUE_PATTERN.matcher("helloworld!").matches();
+        assert !ENCRYPTED_VALUE_PATTERN.matcher("helloworld!").matches();
         //legacy key
-        assert Secret.ENCRYPTED_VALUE_PATTERN.matcher("abcdefghijklmnopqr0123456789").matches();
+        assert ENCRYPTED_VALUE_PATTERN.matcher("abcdefghijklmnopqr0123456789").matches();
         //legacy key
-        assert Secret.ENCRYPTED_VALUE_PATTERN.matcher("abcdefghijklmnopqr012345678==").matches();
+        assert ENCRYPTED_VALUE_PATTERN.matcher("abcdefghijklmnopqr012345678==").matches();
     }
 
     @Test

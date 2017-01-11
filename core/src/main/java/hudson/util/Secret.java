@@ -134,20 +134,31 @@ public final class Secret implements Serializable {
     }
 
     /**
-     * Pattern matching a possible output of {@link #getEncryptedValue} possibly containing metadata.
-     * Basically, any Base64-encoded value.
-     * You must then call {@link #decrypt(String)} to eliminate false positives.
-     */
-    @Restricted(NoExternalUse.class)
-    public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?(\"iv\":\"[A-Za-z0-9+/]+={0,2}\"\\s*,\\s*)?(\"?secret\"?:\")?[A-Za-z0-9+/]+={0,2}\"?}?");
-    /**
      * Pattern matching a possible output of {@link #getEncryptedValue} possibly containing metadata as it could appear in an xml or html output.
      * Basically, any Base64-encoded value.
      * You must then call {@link #decrypt(String)} to eliminate false positives.
      * @see #ENCRYPTED_VALUE_PATTERN
      */
     @Restricted(NoExternalUse.class)
-    public static final Pattern XML_ENCODED_ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?(&quot;iv&quot;:&quot;[A-Za-z0-9+/]+={0,2}&quot;\\s*,\\s*)?(&quot;?secret&quot;?:&quot;)?[A-Za-z0-9+/]+={0,2}(&quot;)?}?");
+    public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?(&quot;iv&quot;:&quot;[A-Za-z0-9+/]+={0,2}&quot;\\s*,\\s*)?(&quot;?secret&quot;?:&quot;)?[A-Za-z0-9+/]+={0,2}(&quot;)?}?");
+
+    /**
+     * Checks if the provided string matches a secret and can be decrypted.
+     * Handles potential XML encoding.
+     *
+     * @param potentialSecret the string that might be a secret
+     *
+     * @return true if it can be decrypted.
+     * @see #ENCRYPTED_VALUE_PATTERN
+     * @see #decrypt(String)
+     */
+    @Restricted(NoExternalUse.class)
+    public static boolean matchesSecret(String potentialSecret) {
+        if (potentialSecret != null && potentialSecret.startsWith("{") && potentialSecret.contains("&quot;")) {
+            potentialSecret = StringEscapeUtils.unescapeXml(potentialSecret);
+        }
+        return Secret.decrypt(potentialSecret) != null;
+    }
 
     /**
      * Reverse operation of {@link #getEncryptedValue()}. Returns null

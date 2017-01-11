@@ -605,7 +605,7 @@ public abstract class AbstractItem extends Actionable implements Item, HttpDelet
         rsp.sendError(SC_BAD_REQUEST);
     }
 
-    static final Pattern SECRET_PATTERN = Pattern.compile(">(" + Secret.XML_ENCODED_ENCRYPTED_VALUE_PATTERN + ")<");
+    static final Pattern SECRET_PATTERN = Pattern.compile(">(" + Secret.ENCRYPTED_VALUE_PATTERN + ")<");
     /**
      * Writes {@code config.xml} to the specified output stream.
      * The user must have at least {@link #EXTENDED_READ}.
@@ -623,11 +623,7 @@ public abstract class AbstractItem extends Actionable implements Item, HttpDelet
             Matcher matcher = SECRET_PATTERN.matcher(xml);
             StringBuffer cleanXml = new StringBuffer();
             while (matcher.find()) {
-                String potentialSecret = matcher.group(1);
-                if (potentialSecret != null && potentialSecret.startsWith("{") && potentialSecret.contains("&quot;")) {
-                    potentialSecret = StringEscapeUtils.unescapeXml(potentialSecret);
-                }
-                if (Secret.decrypt(potentialSecret) != null) {
+                if (Secret.matchesSecret(matcher.group(1))) {
                     matcher.appendReplacement(cleanXml, ">********<");
                 }
             }

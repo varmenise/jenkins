@@ -229,11 +229,7 @@ public abstract class ItemGroupMixIn {
         if (!src.hasPermission(Item.CONFIGURE)) {
             Matcher matcher = AbstractItem.SECRET_PATTERN.matcher(srcConfigFile.asString());
             while (matcher.find()) {
-                String potentialSecret = matcher.group(1);
-                if (potentialSecret != null && potentialSecret.startsWith("{") && potentialSecret.contains("&quot;")) {
-                    potentialSecret = StringEscapeUtils.unescapeXml(potentialSecret);
-                }
-                if (Secret.decrypt(potentialSecret) != null) {
+                if (Secret.matchesSecret(matcher.group(1))) {
                     // AccessDeniedException2 does not permit a custom message, and anyway redirecting the user to the login screen is obviously pointless.
                     throw new AccessDeniedException(Messages.ItemGroupMixIn_may_not_copy_as_it_contains_secrets_and_(src.getFullName(), Jenkins.getAuthentication().getName(), Item.PERMISSIONS.title, Item.EXTENDED_READ.name, Item.CONFIGURE.name));
                 }

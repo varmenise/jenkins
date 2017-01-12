@@ -168,7 +168,7 @@ public abstract class OfflineCause {
                 } else {
                     // The user field is not properly deserialized so id may be missing. Look the user up by fullname
                     User user = User.get(this.user.getFullName(), true, Collections.emptyMap());
-                    userId = user == null ? null : user.getId();
+                    userId = user.getId();
                 }
                 this.user = null;
             }

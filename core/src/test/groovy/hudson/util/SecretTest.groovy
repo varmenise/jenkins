@@ -44,7 +44,7 @@ public class SecretTest {
     @Rule
     public MockSecretRule mockSecretRule = new MockSecretRule()
 
-    static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?(\"iv\":\"[A-Za-z0-9+/]+={0,2}\"\\s*,\\s*)?(\"?secret\"?:\")?[A-Za-z0-9+/]+={0,2}\"?}?");
+    static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?[A-Za-z0-9+/]+={0,2}}?");
 
     @Test
     void testEncrypt() {
@@ -92,7 +92,7 @@ public class SecretTest {
         def s = Secret.fromString("Mr.Jenkins");
         def xml = Jenkins.XSTREAM.toXML(s);
         assert !xml.contains(s.plainText)
-        assert xml ==~ /<hudson\.util\.Secret>\{.*&quot;secret&quot;:&quot;[A-Za-z0-9+\/]+={0,2}&quot;}<\/hudson\.util\.Secret>/
+        assert xml ==~ /<hudson\.util\.Secret>\{[A-Za-z0-9+\/]+={0,2}}<\/hudson\.util\.Secret>/
 
         def o = Jenkins.XSTREAM.fromXML(xml);
         assert o==s : xml;

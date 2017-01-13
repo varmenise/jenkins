@@ -30,12 +30,10 @@ import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.trilead.ssh2.crypto.Base64;
+import java.util.Arrays;
 import jenkins.model.Jenkins;
 import hudson.Util;
 import jenkins.security.CryptoConfidentialKey;
-import net.sf.json.JSONException;
-import net.sf.json.JSONObject;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.kohsuke.stapler.Stapler;
 
 import javax.crypto.Cipher;
@@ -63,6 +61,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * @author Kohsuke Kawaguchi
  */
 public final class Secret implements Serializable {
+    private static final byte PAYLOAD_V1 = 1;
     /**
      * Unencrypted secret text.
      */
@@ -123,11 +122,23 @@ public final class Secret implements Serializable {
                     iv = KEY.newIv();
                 }
             }
-            JSONObject data = new JSONObject();
-            data.put("iv", new String(Base64.encode(iv)));
             Cipher cipher = KEY.encrypt(iv);
-            data.put("secret", new String(Base64.encode(cipher.doFinal(this.value.getBytes(UTF_8)))));
-            return data.toString();
+            byte[] encrypted = cipher.doFinal(this.value.getBytes(UTF_8));
+            byte[] payload = new byte[1 + 8 + iv.length + encrypted.length];
+            int pos = 0;
+            payload[pos++] = PAYLOAD_V1;
+            payload[pos++] = (byte)(iv.length >> 24);
+            payload[pos++] = (byte)(iv.length >> 16);
+            payload[pos++] = (byte)(iv.length >> 8);
+            payload[pos++] = (byte)(iv.length);
+            payload[pos++] = (byte)(encrypted.length >> 24);
+            payload[pos++] = (byte)(encrypted.length >> 16);
+            payload[pos++] = (byte)(encrypted.length >> 8);
+            payload[pos++] = (byte)(encrypted.length);
+            System.arraycopy(iv, 0, payload, pos, iv.length);
+            pos+=iv.length;
+            System.arraycopy(encrypted, 0, payload, pos, encrypted.length);
+            return "{"+new String(Base64.encode(payload))+"}";
         } catch (GeneralSecurityException e) {
             throw new Error(e); // impossible
         }
@@ -140,11 +151,10 @@ public final class Secret implements Serializable {
      * @see #ENCRYPTED_VALUE_PATTERN
      */
     @Restricted(NoExternalUse.class)
-    public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?(&quot;iv&quot;:&quot;[A-Za-z0-9+/]+={0,2}&quot;\\s*,\\s*)?(&quot;?secret&quot;?:&quot;)?[A-Za-z0-9+/]+={0,2}(&quot;)?}?");
+    public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?[A-Za-z0-9+/]+={0,2}}?");
 
     /**
      * Checks if the provided string matches a secret and can be decrypted.
-     * Handles potential XML encoding.
      *
      * @param potentialSecret the string that might be a secret
      *
@@ -154,9 +164,6 @@ public final class Secret implements Serializable {
      */
     @Restricted(NoExternalUse.class)
     public static boolean matchesSecret(String potentialSecret) {
-        if (potentialSecret != null && potentialSecret.startsWith("{") && potentialSecret.contains("&quot;")) {
-            potentialSecret = StringEscapeUtils.unescapeXml(potentialSecret);
-        }
         return Secret.decrypt(potentialSecret) != null;
     }
 
@@ -168,34 +175,49 @@ public final class Secret implements Serializable {
         if (data == null) return null;
 
         if (data.startsWith("{") && data.endsWith("}")) { //likely CBC encrypted/containing metadata but could be plain text
+            byte[] payload;
             try {
-                String decData = data;
-                if (data.contains("&quot;")) { //XML Encoded JSON
-                    decData = StringEscapeUtils.unescapeXml(data);
-                }
-                JSONObject json = JSONObject.fromObject(decData);
-                byte[] iv = Base64.decode(json.getString("iv").toCharArray());
-                byte[] code = Base64.decode(json.getString("secret").toCharArray());
-                String text = new String(KEY.decrypt(iv).doFinal(code), UTF_8);
-                return new Secret(text, iv);
-            } catch (GeneralSecurityException | JSONException e) {
-                try {
-                    return HistoricalSecrets.decrypt(data, KEY);
-                } catch (IOException | GeneralSecurityException e1) {
-                    return null;
-                }
+                payload = Base64.decode(data.substring(1, data.length()-1).toCharArray());
             } catch (IOException e) {
                 return null;
             }
-        }
-        try {
-            return HistoricalSecrets.decrypt(data, KEY);
-        } catch (GeneralSecurityException e) {
-            return null;
-        } catch (UnsupportedEncodingException e) {
-            throw new Error(e); // impossible
-        } catch (IOException e) {
-            return null;
+            switch (payload[0]) {
+                case PAYLOAD_V1:
+                    int ivLength = ((payload[1] & 0xff) << 24)
+                            | ((payload[2] & 0xff) << 16)
+                            | ((payload[3] & 0xff) << 8)
+                            | (payload[4] & 0xff);
+                    int dataLength = ((payload[5] & 0xff) << 24)
+                            | ((payload[6] & 0xff) << 16)
+                            | ((payload[7] & 0xff) << 8)
+                            | (payload[8] & 0xff);
+                    if (payload.length != 1 + 8 + ivLength + dataLength) {
+                        // not valid v1
+                        return null;
+                    }
+                    byte[] iv = Arrays.copyOfRange(payload, 9, 9 + ivLength);
+                    byte[] code = Arrays.copyOfRange(payload, 9+ivLength, payload.length);
+                    String text = null;
+                    try {
+                        text = new String(KEY.decrypt(iv).doFinal(code), UTF_8);
+                    } catch (GeneralSecurityException e) {
+                        // it's v1 which cannot be historical, but not decrypting
+                        return null;
+                    }
+                    return new Secret(text, iv);
+                default:
+                    return null;
+            }
+        } else {
+            try {
+                return HistoricalSecrets.decrypt(data, KEY);
+            } catch (GeneralSecurityException e) {
+                return null;
+            } catch (UnsupportedEncodingException e) {
+                throw new Error(e); // impossible
+            } catch (IOException e) {
+                return null;
+            }
         }
     }
 

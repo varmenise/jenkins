@@ -23,10 +23,10 @@ class SecretRewriterTest {
 
     @Rule public TemporaryFolder tmp = new TemporaryFolder()
 
-    def FOO_PATTERN = /<foo>\{"iv":"[A-Za-z0-9+\/]+={0,2}","secret":"[A-Za-z0-9+\/]+={0,2}"}<\/foo>/
-    def MSG_PATTERN = /<msg>\{"iv":"[A-Za-z0-9+\/]+={0,2}","secret":"[A-Za-z0-9+\/]+={0,2}"}<\/msg>/
-    def FOO_PATTERN2 = /(<foo>\{"iv":"[A-Za-z0-9+\/]+={0,2}","secret":"[A-Za-z0-9+\/]+={0,2}"}<\/foo>){2}/
-    def ABC_FOO_PATTERN = /<abc>\s<foo>\{"iv":"[A-Za-z0-9+\/]+={0,2}","secret":"[A-Za-z0-9+\/]+={0,2}"}<\/foo>\s<\/abc>/
+    def FOO_PATTERN = /<foo>\{[A-Za-z0-9+\/]+={0,2}}<\/foo>/
+    def MSG_PATTERN = /<msg>\{[A-Za-z0-9+\/]+={0,2}}<\/msg>/
+    def FOO_PATTERN2 = /(<foo>\{[A-Za-z0-9+\/]+={0,2}}<\/foo>){2}/
+    def ABC_FOO_PATTERN = /<abc>\s<foo>\{[A-Za-z0-9+\/]+={0,2}}<\/foo>\s<\/abc>/
 
     @Test
     void singleFileRewrite() {

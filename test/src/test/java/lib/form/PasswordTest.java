@@ -86,10 +86,10 @@ public class PasswordTest extends HudsonTestCase implements Describable<Password
         boolean saveEnabled = Item.EXTENDED_READ.getEnabled();
         try {
 
-            //final String plain_regex_match = ".*\\{\"iv\":\"[A-Za-z0-9+/]+={0,2}\"\\s*,\\s*\"secret\":\"[A-Za-z0-9+/]+={0,2}\"}.*";
-            final String xml_regex_match = "\\{&quot;iv&quot;:&quot;[A-Za-z0-9+/]+={0,2}&quot;,&quot;secret&quot;:&quot;[A-Za-z0-9+/]+={0,2}&quot;}";
+            //final String plain_regex_match = ".*\\{[A-Za-z0-9+/]+={0,2}}.*";
+            final String xml_regex_match = "\\{[A-Za-z0-9+/]+={0,2}}";
             final Pattern xml_regex_pattern = Pattern.compile(xml_regex_match);
-            final String staticTest = "\n\nvalue=\"{&quot;iv&quot;:&quot;ae6GrncEwy+y4PR2q0A4MQ==&quot;,&quot;secret&quot;:&quot;X0kssEvV0OA1T1UwO3TkEQ==&quot;}\"\n";
+            final String staticTest = "\n\nvalue=\"{AQAAABAAAAAgXhXgopokysZkduhl+v1gm0UhUBBbjKDVpKz7bGk3mIO53cNTRdlu7LC4jZYEc+vF}\"\n";
             //Just a quick verification on what could be on the page and that the regexp is correctly set up
             assertThat(xml_regex_pattern.matcher(staticTest).find(), is(true));
 

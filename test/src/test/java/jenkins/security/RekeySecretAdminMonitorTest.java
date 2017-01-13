@@ -32,7 +32,7 @@ public class RekeySecretAdminMonitorTest extends HudsonTestCase {
     @Inject
     RekeySecretAdminMonitor monitor;
 
-    final String plain_regex_match = ".*\\{\"iv\":\"[A-Za-z0-9+/]+={0,2}\"\\s*,\\s*\"secret\":\"[A-Za-z0-9+/]+={0,2}\"}.*";
+    final String plain_regex_match = ".*\\{[A-Za-z0-9+/]+={0,2}}.*";
 
     @Override
     protected void setUp() throws Exception {

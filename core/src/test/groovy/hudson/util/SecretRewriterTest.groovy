@@ -77,8 +77,7 @@ class SecretRewriterTest {
      */
     @Test
     void recursionDetection() {
-        def backup = tmp.newFolder("backup")
-        def sw = new SecretRewriter(backup);
+        def sw = new SecretRewriter();
         def st = StreamTaskListener.fromStdout()
 
         def o = encryptOld("Hello world")
@@ -108,7 +107,6 @@ class SecretRewriterTest {
 
         dirs.each { p->
             assert new File(t,"$p/foo.xml").text.trim() ==~ MSG_PATTERN
-            assert new File(backup,"$p/foo.xml").text.trim()==payload
         }
 
         // t2 is only reachable by following a symlink. this should be covered, too

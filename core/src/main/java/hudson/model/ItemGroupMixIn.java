@@ -32,7 +32,6 @@ import hudson.util.Function1;
 import hudson.util.Secret;
 import jenkins.model.Jenkins;
 import jenkins.util.xml.XMLUtils;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -229,7 +228,7 @@ public abstract class ItemGroupMixIn {
         if (!src.hasPermission(Item.CONFIGURE)) {
             Matcher matcher = AbstractItem.SECRET_PATTERN.matcher(srcConfigFile.asString());
             while (matcher.find()) {
-                if (Secret.matchesSecret(matcher.group(1))) {
+                if (Secret.decrypt(matcher.group(1)) != null) {
                     // AccessDeniedException2 does not permit a custom message, and anyway redirecting the user to the login screen is obviously pointless.
                     throw new AccessDeniedException(Messages.ItemGroupMixIn_may_not_copy_as_it_contains_secrets_and_(src.getFullName(), Jenkins.getAuthentication().getName(), Item.PERMISSIONS.title, Item.EXTENDED_READ.name, Item.CONFIGURE.name));
                 }

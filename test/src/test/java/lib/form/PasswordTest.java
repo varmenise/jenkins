@@ -81,6 +81,7 @@ public class PasswordTest extends HudsonTestCase implements Describable<Password
         }
     }
 
+    // TODO in trunk switch to @Issue({"SECURITY-266","SECURITY-304"})
     @Issue("SECURITY-266, SECURITY-304")
     public void testExposedCiphertext() throws Exception {
         boolean saveEnabled = Item.EXTENDED_READ.getEnabled();

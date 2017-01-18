@@ -126,6 +126,7 @@ public final class Secret implements Serializable {
             byte[] encrypted = cipher.doFinal(this.value.getBytes(UTF_8));
             byte[] payload = new byte[1 + 8 + iv.length + encrypted.length];
             int pos = 0;
+            // For PAYLOAD_V1 we use this byte shifting model, V2 probably will need DataOutput
             payload[pos++] = PAYLOAD_V1;
             payload[pos++] = (byte)(iv.length >> 24);
             payload[pos++] = (byte)(iv.length >> 16);
@@ -145,27 +146,13 @@ public final class Secret implements Serializable {
     }
 
     /**
-     * Pattern matching a possible output of {@link #getEncryptedValue} possibly containing metadata as it could appear in an xml or html output.
-     * Basically, any Base64-encoded value.
+     * Pattern matching a possible output of {@link #getEncryptedValue}
+     * Basically, any Base64-encoded value optionally wrapped by {@code {}}.
      * You must then call {@link #decrypt(String)} to eliminate false positives.
      * @see #ENCRYPTED_VALUE_PATTERN
      */
     @Restricted(NoExternalUse.class)
     public static final Pattern ENCRYPTED_VALUE_PATTERN = Pattern.compile("\\{?[A-Za-z0-9+/]+={0,2}}?");
-
-    /**
-     * Checks if the provided string matches a secret and can be decrypted.
-     *
-     * @param potentialSecret the string that might be a secret
-     *
-     * @return true if it can be decrypted.
-     * @see #ENCRYPTED_VALUE_PATTERN
-     * @see #decrypt(String)
-     */
-    @Restricted(NoExternalUse.class)
-    public static boolean matchesSecret(String potentialSecret) {
-        return Secret.decrypt(potentialSecret) != null;
-    }
 
     /**
      * Reverse operation of {@link #getEncryptedValue()}. Returns null
@@ -183,6 +170,7 @@ public final class Secret implements Serializable {
             }
             switch (payload[0]) {
                 case PAYLOAD_V1:
+                    // For PAYLOAD_V1 we use this byte shifting model, V2 probably will need DataOutput
                     int ivLength = ((payload[1] & 0xff) << 24)
                             | ((payload[2] & 0xff) << 16)
                             | ((payload[3] & 0xff) << 8)
@@ -197,7 +185,7 @@ public final class Secret implements Serializable {
                     }
                     byte[] iv = Arrays.copyOfRange(payload, 9, 9 + ivLength);
                     byte[] code = Arrays.copyOfRange(payload, 9+ivLength, payload.length);
-                    String text = null;
+                    String text;
                     try {
                         text = new String(KEY.decrypt(iv).doFinal(code), UTF_8);
                     } catch (GeneralSecurityException e) {

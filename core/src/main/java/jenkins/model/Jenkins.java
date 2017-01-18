@@ -2235,11 +2235,13 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
 
     @Override
     public SearchIndexBuilder makeSearchIndex() {
-        return super.makeSearchIndex()
-            .add("configure", "config","configure")
-            .add("manage")
-            .add("log")
-            .add(new CollectionSearchIndex<TopLevelItem>() {
+        SearchIndexBuilder builder = super.makeSearchIndex();
+        if (hasPermission(ADMINISTER)) {
+                builder.add("configure", "config", "configure")
+                    .add("manage")
+                    .add("log");
+        }
+        builder.add(new CollectionSearchIndex<TopLevelItem>() {
                 protected SearchItem get(String key) { return getItemByFullName(key, TopLevelItem.class); }
                 protected Collection<TopLevelItem> all() { return getAllItems(TopLevelItem.class); }
                 @Nonnull
@@ -2261,6 +2263,7 @@ public class Jenkins extends AbstractCIBase implements DirectlyModifiableTopLeve
                 protected View get(String key) { return getView(key); }
                 protected Collection<View> all() { return viewGroupMixIn.getViews(); }
             });
+        return builder;
     }
 
     public String getUrlChildPrefix() {

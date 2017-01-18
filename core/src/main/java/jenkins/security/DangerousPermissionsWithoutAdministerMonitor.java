@@ -38,6 +38,7 @@ import hudson.security.HudsonPrivateSecurityRealm;
 import hudson.security.Permission;
 import hudson.security.SecurityRealm;
 import jenkins.model.Jenkins;
+import jenkins.util.SystemProperties;
 import org.acegisecurity.Authentication;
 import org.acegisecurity.userdetails.UsernameNotFoundException;
 import org.kohsuke.accmod.Restricted;
@@ -255,8 +256,7 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
 
         @Override
         public long getRecurrencePeriod() {
-            // FIXME make into SystemProperties call on Jenkins 2.4 and up
-            return Long.getLong(DangerousPermissionsWithoutAdministerMonitor.class.getName() + ".interval", 1000 * 60 * 5);
+            return SystemProperties.getLong(DangerousPermissionsWithoutAdministerMonitor.class.getName() + ".interval", 1000l * 60 * 5);
         }
     }
 

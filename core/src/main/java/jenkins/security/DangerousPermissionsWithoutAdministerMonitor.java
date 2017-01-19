@@ -258,6 +258,12 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
             // FIXME make into SystemProperties call on Jenkins 2.4 and up
             return Long.getLong(DangerousPermissionsWithoutAdministerMonitor.class.getName() + ".interval", 1000 * 60 * 5);
         }
+
+        @Override
+        public long getInitialDelay() {
+            return 1000 * 60 * 15;
+        }
+
     }
 
     /**

@@ -258,6 +258,12 @@ public class DangerousPermissionsWithoutAdministerMonitor extends Administrative
         public long getRecurrencePeriod() {
             return SystemProperties.getLong(DangerousPermissionsWithoutAdministerMonitor.class.getName() + ".interval", 1000l * 60 * 5);
         }
+
+        @Override
+        public long getInitialDelay() {
+            return 1000 * 60 * 15;
+        }
+
     }
 
     /**
